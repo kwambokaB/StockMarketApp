@@ -2,10 +2,14 @@ package com.kwambokaB.stockmarketapp.data.repository
 
 import com.kwambokaB.stockmarketapp.data.api.StockApi
 import com.kwambokaB.stockmarketapp.data.csv.CSVParser
+import com.kwambokaB.stockmarketapp.data.csv.IntradayInfoParser
 import com.kwambokaB.stockmarketapp.data.localdb.StockDb
+import com.kwambokaB.stockmarketapp.data.mapper.toCompanyInfo
 import com.kwambokaB.stockmarketapp.data.mapper.toCompanyListing
 import com.kwambokaB.stockmarketapp.data.mapper.toCompanyListingEntity
+import com.kwambokaB.stockmarketapp.domain.model.CompanyInfo
 import com.kwambokaB.stockmarketapp.domain.model.CompanyListing
+import com.kwambokaB.stockmarketapp.domain.model.IntradayInfo
 import com.kwambokaB.stockmarketapp.domain.repository.StockRepository
 import com.kwambokaB.stockmarketapp.util.Resource
 import kotlinx.coroutines.flow.Flow
@@ -20,7 +24,8 @@ import javax.inject.Singleton
 class StockRepositoryImpl @Inject constructor(
     private val api: StockApi,
     private val db: StockDb,
-    private val companyListingParser: CSVParser<CompanyListing>
+    private val companyListingParser: CSVParser<CompanyListing>,
+    private val intraDayParser: CSVParser<IntradayInfo>
 ): StockRepository {
 
     private val dao = db.dao
@@ -33,42 +38,74 @@ class StockRepositoryImpl @Inject constructor(
             emit(Resource.Loading(true))
             val localListings = dao.searchCompanyListing(query)
             emit(Resource.Success(
-                data = localListings.map{ it.toCompanyListing() }
+                data = localListings.map { it.toCompanyListing() }
             ))
             val isDbEmpty = localListings.isEmpty() && query.isBlank()
             val shouldJustLoadFromCache = !isDbEmpty && !fetchFromRemote
-            if(shouldJustLoadFromCache){
+            if (shouldJustLoadFromCache) {
                 emit(Resource.Loading(false))
                 return@flow
             }
-            val remoteListing = try{
+            val remoteListing = try {
                 val response = api.getListings()
                 companyListingParser.parse(response.byteStream())
-            } catch (e: IOException){
+            } catch (e: IOException) {
                 e.printStackTrace()
                 emit(Resource.Error("Couldn't load Data"))
                 null
-            } catch (e: HttpException){
+            } catch (e: HttpException) {
                 e.printStackTrace()
                 emit(Resource.Error("Couldn't Load Data"))
                 null
             }
 
-            remoteListing?.let {
-                listings ->
+            remoteListing?.let { listings ->
                 dao.clearCompanyListings()
                 dao.insertCompanyListings(
-                    listings.map{ it.toCompanyListingEntity()}
+                    listings.map { it.toCompanyListingEntity() }
                 )
 
                 emit(Resource.Success(
-                   data = dao
-                       .searchCompanyListing("")
-                       .map { it.toCompanyListing() }
+                    data = dao
+                        .searchCompanyListing("")
+                        .map { it.toCompanyListing() }
                 ))
                 emit(Resource.Loading(false))
 
             }
         }
+    }
+
+    override suspend fun getIntradayInfo(symbol: String): Resource<List<IntradayInfo>> {
+        return try {
+            val response = api.getIntradayInfo(symbol)
+            val result = intraDayParser.parse(response.byteStream())
+            Resource.Success(result)
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Resource.Error("Couldn't load Data")
+            // null
+        } catch (e: HttpException) {
+            e.printStackTrace()
+            Resource.Error("Couldn't Load Data")
+            // null
+        }
+
+    }
+
+    override suspend fun getCompanyInfo(symbol: String): Resource<CompanyInfo> {
+        return try {
+            val result = api.getCompanyInfo(symbol)
+            Resource.Success(result.toCompanyInfo())
+        } catch (e: IOException) {
+            e.printStackTrace()
+            Resource.Error("Couldn't load Data")
+            // null
+        } catch (e: HttpException) {
+            e.printStackTrace()
+            Resource.Error("Couldn't Load Data")
+            // null
+        }
+
     }
 }
