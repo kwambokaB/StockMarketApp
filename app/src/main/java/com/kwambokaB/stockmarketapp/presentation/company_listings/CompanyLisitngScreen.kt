@@ -20,19 +20,24 @@ import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 
 @Composable
 @Destination(start = true)
-fun CompanyListingScreen(
+fun CompanyListingsScreen(
     navigator: DestinationsNavigator,
     viewModel: CompanyListingViewModel = hiltViewModel()
-){
-    val swipeRefreshState = rememberSwipeRefreshState(isRefreshing = viewModel.state.isRefreshing)
+) {
+    val swipeRefreshState = rememberSwipeRefreshState(
+        isRefreshing = viewModel.state.isRefreshing
+    )
     val state = viewModel.state
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(
+        modifier = Modifier.fillMaxSize()
+    ) {
         OutlinedTextField(
             value = state.searchQuery,
             onValueChange = {
                 viewModel.onEvent(
                     CompanyListingEvents.onSearchQueryChange(it)
-                ) },
+                )
+            },
             modifier = Modifier
                 .padding(16.dp)
                 .fillMaxWidth(),
@@ -42,33 +47,34 @@ fun CompanyListingScreen(
             maxLines = 1,
             singleLine = true
         )
-        SwipeRefresh(state = swipeRefreshState, onRefresh = {
-          viewModel.onEvent(CompanyListingEvents.Refresh)
-        }) {
-            LazyColumn(modifier = Modifier.fillMaxSize()){
-                items (state.companies.size ) {
-                    i ->
+        SwipeRefresh(
+            state = swipeRefreshState,
+            onRefresh = {
+                viewModel.onEvent(CompanyListingEvents.Refresh)
+            }
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                items(state.companies.size) { i ->
                     val company = state.companies[i]
                     CompanyItem(
                         company = company,
                         modifier = Modifier
                             .fillMaxWidth()
                             .clickable {
-                                // TODO navigate to detail screen
+                                // TODO: Navigate to detail screen
                             }
                             .padding(16.dp)
                     )
                     if(i < state.companies.size) {
-                        Divider(
-                            modifier = Modifier.padding(
-                                horizontal = 16.dp
-                            ))
-                    }
-
+                        Divider(modifier = Modifier.padding(
+                            horizontal = 16.dp
+                        ))
                     }
                 }
             }
         }
     }
-
 }
+

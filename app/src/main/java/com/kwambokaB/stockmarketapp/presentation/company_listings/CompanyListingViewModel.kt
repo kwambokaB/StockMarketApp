@@ -21,6 +21,10 @@ class CompanyListingViewModel @Inject constructor(
 
     private  var searchJob: Job? = null
 
+    init {
+        getCompanyListings()
+    }
+
     fun onEvent(event: CompanyListingEvents){
         when(event){
             is CompanyListingEvents.Refresh ->{
@@ -37,7 +41,7 @@ class CompanyListingViewModel @Inject constructor(
         }
     }
 
-    fun getCompanyListings(
+    private fun getCompanyListings(
         query: String = state.searchQuery.lowercase(),
         fetchFromRemote: Boolean = false
     ){
